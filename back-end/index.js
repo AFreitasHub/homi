@@ -7,6 +7,7 @@ import User from './models/User.js';
 import Item from './models/Item.js';
 
 import userRoutes from './routes/userRoutes.js';
+import itemRoutes from './routes/itemRoutes.js';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/users', userRoutes);
+app.use('/api/items', itemRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
