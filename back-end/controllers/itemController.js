@@ -39,3 +39,18 @@ export const getItems = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 }
+
+export const deleteItem = async (req, res) => {
+    try {
+        const item = await Item.findById(req.params.id);
+
+        if (item) {
+            await item.deleteOne();
+            res.json({ message: 'Item removed' });
+        } else {
+            res.status(404).json({ message: 'Item not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+}
