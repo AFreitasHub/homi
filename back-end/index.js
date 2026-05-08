@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 
 import connectDB from './config/db.js';
 import User from './models/User.js';
+import Item from './models/Item.js';
 
 dotenv.config();
 
