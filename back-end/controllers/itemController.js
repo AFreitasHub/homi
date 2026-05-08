@@ -21,3 +21,21 @@ export const createItem = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 }
+
+export const getItems = async (req, res) => {
+    try {
+        // TEMPORARY - will use JWT tokens later instead of url param
+        const userId = req.query.user;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'Error: Missing User ID' });
+        }
+
+        // fetch and sort (ascending)
+        const items = await Item.find({ user: userId }).sort({ expiryDate: 1 });
+
+        res.json(items);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+}
