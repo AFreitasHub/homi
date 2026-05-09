@@ -1,14 +1,15 @@
 import express from "express";
 import { createItem, getItems, deleteItem, editItem } from "../controllers/itemController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
-const router = express.Router()
+const router = express.Router();
 
-router.post('/', createItem);
+router.post('/', protect, createItem);
 
-router.get('/', getItems);
+router.get('/', protect, getItems);
 
-router.delete('/:id', deleteItem);
+router.delete('/:id', protect, deleteItem);
 
-router.put('/:id', editItem);
+router.put('/:id', protect, editItem);
 
 export default router;
