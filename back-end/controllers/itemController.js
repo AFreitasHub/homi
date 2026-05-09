@@ -54,3 +54,26 @@ export const deleteItem = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 }
+
+export const editItem = async (req, res) => {
+    try {
+        const { name, category, expiryDate, quantity, user } = req.body;
+
+        const item = await Item.findById(req.params.id);
+
+        if (!item) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+
+        item.name = name || item.name;
+        item.category = category || item.category;
+        item.expiryDate = expiryDate || item.expiryDate;
+        item.quantity = quantity || item.quantity;
+
+        const updatedItem = await item.save();
+
+        res.json(updatedItem);
+    } catch (error) {
+        res.status(500).json({message: 'Server error', error: error.message });
+    }
+}
