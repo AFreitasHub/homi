@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 
 const itemSchema = new mongoose.Schema({
-  user: {
+  household: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: false 
+    ref: 'Household',
+    required: true,
   },
   name: {
     type: String,
@@ -21,6 +21,7 @@ const itemSchema = new mongoose.Schema({
   },
   quantity: {
     type: Number,
+    default: 1,
   },
 });
 
