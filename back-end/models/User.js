@@ -19,7 +19,6 @@ const userSchema = new mongoose.Schema({
   household: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Household',
-        default: 'null',
     }
 }, {
   timestamps: true,

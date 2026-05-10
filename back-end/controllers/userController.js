@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Household from '../models/Household.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
@@ -44,6 +45,7 @@ export const loginUser = async (req, res) => {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
+                household: user.household,
                 token: generateToken(user._id)
             });
         } else {
