@@ -55,3 +55,17 @@ export const loginUser = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+export const getUserProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).populate('household', 'name inviteCode');
+        if (user) {
+            res.json(user);
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
