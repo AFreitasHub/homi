@@ -55,3 +55,21 @@ export const joinHousehold = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 }
+
+export const getHousehold = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        
+        if (!user.household) {
+            return res.status(404).json({ message: 'User does not belong to a household' });
+        }
+
+        const household = await Household.findById(user.household)
+            .populate('members', 'name email')
+            .populate('owner', 'name email');
+
+        res.json(household);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
