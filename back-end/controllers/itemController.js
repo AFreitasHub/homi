@@ -1,4 +1,6 @@
 import Item from '../models/Item.js';
+import Household from '../models/Household.js';
+import User from '../models/User.js';
 
 export const createItem = async (req, res) => {
     try {
