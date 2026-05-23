@@ -1,10 +1,53 @@
-import React from 'react';
-import { Stack } from 'expo-router';
+import React, { useContext, useEffect } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { AuthProvider, AuthContext } from '../context/AuthContext';
 
-export default function RootLayout() {
+function RootLayoutNav() {
+  const { user, isLoading } = useContext(AuthContext);
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!user && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (user && inAuthGroup) {
+      router.replace('/');
+    }
+  }, [user, isLoading, segments]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
     </Stack>
   );
 }
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+});
