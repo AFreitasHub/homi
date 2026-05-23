@@ -36,13 +36,22 @@ export const getItems = async (req, res) => {
             return res.status(200).json([]);
         }
 
-        // fetch and sort (ascending)
-        const items = await Item.find({ household: user.household }).sort({ expiryDate: 1 });
+        const query = { household: user.household };
+
+        if (req.query.search) {
+            query.name = { $regex: req.query.search, $options: 'i' };
+        }
+
+        if (req.query.category) {
+            query.category = req.query.category;
+        }
+
+        const items = await Item.find(query).sort({ expiryDate: 1 });
         res.json(items);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
-}
+};
 
 export const deleteItem = async (req, res) => {
     try {
