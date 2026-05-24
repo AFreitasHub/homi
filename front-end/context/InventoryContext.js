@@ -62,8 +62,18 @@ export const InventoryProvider = ({ children }) => {
     }
   };
 
+  const deleteItem = async (id) => {
+    try {
+      await api.delete(`/items/${id}`);
+      setItems((prevItems) => prevItems.filter((item) => item._id !== id));
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      throw error;
+    }
+  };
+
   return (
-    <InventoryContext.Provider value={{ items, isLoading, fetchItems, addItem, editItem }}>
+    <InventoryContext.Provider value={{ items, isLoading, fetchItems, addItem, editItem, deleteItem }}>
       {children}
     </InventoryContext.Provider>
   );
