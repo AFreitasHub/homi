@@ -8,7 +8,7 @@ import api from '../api';
 
 export default function HomeScreen() {
   const { user, logout } = useContext(AuthContext);
-  const { items, isLoading, fetchItems, addItem, editItem } = useContext(InventoryContext);
+  const { items, isLoading, fetchItems, addItem, editItem, deleteItem } = useContext(InventoryContext);
   const [household, setHousehold] = useState(null);
   const [isLoadingHousehold, setIsLoadingHousehold] = useState(true);
   
@@ -190,6 +190,7 @@ export default function HomeScreen() {
               <InventoryItem
                 item={item}
                 onEdit={editItem}
+                onDelete={deleteItem}
               />
             )}
             ListEmptyComponent={
