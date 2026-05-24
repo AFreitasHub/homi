@@ -63,7 +63,7 @@ export const InventoryProvider = ({ children }) => {
   };
 
   return (
-    <InventoryContext.Provider value={{ items, isLoading, fetchItems, addItem }}>
+    <InventoryContext.Provider value={{ items, isLoading, fetchItems, addItem, editItem }}>
       {children}
     </InventoryContext.Provider>
   );

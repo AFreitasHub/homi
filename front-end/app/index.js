@@ -3,11 +3,12 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityInd
 import { StatusBar } from 'expo-status-bar';
 import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
+import InventoryItem from '../components/InventoryItem';
 import api from '../api';
 
 export default function HomeScreen() {
   const { user, logout } = useContext(AuthContext);
-  const { items, isLoading, fetchItems, addItem } = useContext(InventoryContext);
+  const { items, isLoading, fetchItems, addItem, editItem } = useContext(InventoryContext);
   const [household, setHousehold] = useState(null);
   const [isLoadingHousehold, setIsLoadingHousehold] = useState(true);
   
@@ -186,19 +187,10 @@ export default function HomeScreen() {
             data={items}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
-              <View style={styles.itemRow}>
-                <View>
-                  <Text style={styles.itemNameText}>{item.name} (x{item.quantity})</Text>
-                  <Text style={styles.itemMetaText}>
-                    {item.category} • Expires: {new Date(item.expiryDate).toLocaleDateString()}
-                  </Text>
-                </View>
-                <View style={[styles.badge, new Date(item.expiryDate) < new Date() && styles.badgeExpired]}>
-                  <Text style={styles.badgeText}>
-                    {new Date(item.expiryDate) < new Date() ? 'Expired' : 'Tracked'}
-                  </Text>
-                </View>
-              </View>
+              <InventoryItem
+                item={item}
+                onEdit={editItem}
+              />
             )}
             ListEmptyComponent={
               <Text style={styles.emptyText}>No food items tracked yet.</Text>
