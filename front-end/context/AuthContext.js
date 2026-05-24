@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import api, { setAuthToken } from '../api'; 
+import api, { setAuthToken } from '../api';
 
 export const AuthContext = createContext();
 
@@ -14,7 +14,6 @@ export const AuthProvider = ({ children }) => {
         const token = await SecureStore.getItemAsync('userToken');
         if (token) {
           setAuthToken(token);
-          // Fetch the user profile to restore the session
           const response = await api.get('/users/profile');
           setUser(response.data);
         }
@@ -36,6 +35,15 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
   };
 
+  const register = async (name, email, password) => {
+    const response = await api.post('/users', { name, email, password });
+    const { token, ...userData } = response.data;
+
+    await SecureStore.setItemAsync('userToken', token);
+    setAuthToken(token);
+    setUser(userData);
+  };
+
   const logout = async () => {
     await SecureStore.deleteItemAsync('userToken');
     setAuthToken(null);
@@ -43,7 +51,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
