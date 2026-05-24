@@ -49,6 +49,19 @@ export const InventoryProvider = ({ children }) => {
     }
   };
 
+  const editItem = async (id, updatedFields) => {
+    try {
+      const response = await api.put(`/items/${id}`, updatedFields);
+      setItems((prevItems) =>
+        prevItems.map((item) => (item._id === id ? response.data : item))
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Failed to edit item:', error);
+      throw error;
+    }
+  };
+
   return (
     <InventoryContext.Provider value={{ items, isLoading, fetchItems, addItem }}>
       {children}
