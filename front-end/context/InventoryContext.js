@@ -33,8 +33,24 @@ export const InventoryProvider = ({ children }) => {
     }
   }, []);
 
+  const addItem = async (itemData) => {
+    try {
+      const response = await api.post('/items', itemData);
+      // optimistically update to keep UI snappy
+      setItems((prevItems) => {
+        const updated = [...prevItems, response.data];
+        // soonest to expire first
+        return updated.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to add item:', error);
+      throw error;
+    }
+  };
+
   return (
-    <InventoryContext.Provider value={{ items, isLoading, fetchItems }}>
+    <InventoryContext.Provider value={{ items, isLoading, fetchItems, addItem }}>
       {children}
     </InventoryContext.Provider>
   );
