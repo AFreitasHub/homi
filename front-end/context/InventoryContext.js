@@ -1,5 +1,6 @@
 import React, { createContext, useState, useCallback } from 'react';
 import api from '../api';
+import { saveCache, getCache } from '../utils/cache';
 
 export const InventoryContext = createContext();
 
@@ -11,23 +12,16 @@ export const InventoryProvider = ({ children }) => {
   const fetchItems = useCallback(async (filters = {}) => {
     setIsLoading(true);
     try {
-      const { search, category } = filters;
-      let url = '/items';
-      
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (category) params.append('category', category);
-      
-      const queryString = params.toString();
-      if (queryString) {
-        url += `?${queryString}`;
-      }
-
-      const response = await api.get(url);
+      const response = await api.get('/items');
       setItems(response.data);
+      // update cache
+      await saveCache('@homi_items', response.data);
     } catch (error) {
-      console.error('Failed to fetch inventory items:', error);
-      throw error;
+      console.warn('API fetch failed, loading from cache...');
+      const cachedItems = await getCache('@homi_items'); 
+      if (cachedItems) {
+        setItems(cachedItems);
+      }
     } finally {
       setIsLoading(false);
     }

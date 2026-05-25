@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
 import InventoryItem from '../components/InventoryItem';
+import { saveCache, getCache } from '../utils/cache';
 import api from '../api';
 
 export default function HomeScreen() {
@@ -28,12 +29,13 @@ export default function HomeScreen() {
     try {
       const response = await api.get('/households');
       setHousehold(response.data);
-      if (response.data) {
-        await fetchItems();
-      }
+      await saveCache('@homi_household', response.data); 
+      if (response.data) await fetchItems();
     } catch (error) {
-      if (error.response?.status !== 404) {
-        Alert.alert('Server Error', 'Failed to retrieve household data.');
+      const cachedHousehold = await getCache('@homi_household');
+      if (cachedHousehold) {
+        setHousehold(cachedHousehold);
+        await fetchItems(); 
       }
     } finally {
       setIsLoadingHousehold(false);

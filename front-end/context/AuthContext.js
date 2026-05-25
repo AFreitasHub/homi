@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api, { setAuthToken } from '../api';
+import { saveCache, getCache } from '../utils/cache';
 
 export const AuthContext = createContext();
 
@@ -14,8 +15,14 @@ export const AuthProvider = ({ children }) => {
         const token = await SecureStore.getItemAsync('userToken');
         if (token) {
           setAuthToken(token);
-          const response = await api.get('/users/profile');
-          setUser(response.data);
+          try {
+            const response = await api.get('/users/profile');
+            setUser(response.data);
+            await saveCache('@homi_user', response.data);
+          } catch (error) {
+            const cachedUser = await getCache('@homi_user');
+            if (cachedUser) setUser(cachedUser);
+          }
         }
       } catch (error) {
         console.error("Failed to restore session:", error);
