@@ -61,15 +61,20 @@ export const InventoryProvider = ({ children }) => {
     // optimistically update ui
     const tempItem = { ...itemData, _id: Date.now().toString() }; 
     setItems((prevItems) => {
-      const updated = [...prevItems, tempItem];
-      return updated.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+      const updated = [...prevItems, tempItem].sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+      saveCache('@homi_items', updated); // sync
+      return updated;
     });
 
     // try to hit the server
     try {
       const response = await api.post('/items', itemData);
       // replace temp item with the real one from db
-      setItems((prevItems) => prevItems.map(item => item._id === tempItem._id ? response.data : item));
+      setItems((prevItems) => {
+        const finalItems = prevItems.map(item => item._id === tempItem._id ? response.data : item);
+        saveCache('@homi_items', finalItems); // sync
+        return finalItems;
+      });
       return response.data;
     } catch (error) {
       // fallback to offline queue
@@ -79,7 +84,11 @@ export const InventoryProvider = ({ children }) => {
   };
 
   const editItem = async (id, updatedFields) => {
-    setItems((prevItems) => prevItems.map((item) => (item._id === id ? { ...item, ...updatedFields } : item)));
+    setItems((prevItems) => {
+      const updatedItems = prevItems.map((item) => (item._id === id ? { ...item, ...updatedFields } : item));
+      saveCache('@homi_items', updatedItems); // sync
+      return updatedItems;
+    });
     
     try {
       await api.put(`/items/${id}`, updatedFields);
@@ -90,7 +99,11 @@ export const InventoryProvider = ({ children }) => {
   };
 
   const deleteItem = async (id) => {
-    setItems((prevItems) => prevItems.filter((item) => item._id !== id));
+    setItems((prevItems) => {
+      const updatedItems = prevItems.filter((item) => item._id !== id);
+      saveCache('@homi_items', updatedItems); // sync
+      return updatedItems;
+    });
     
     try {
       await api.delete(`/items/${id}`);
