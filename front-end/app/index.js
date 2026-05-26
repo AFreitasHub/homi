@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
 import InventoryItem from '../components/InventoryItem';
 import { saveCache, getCache } from '../utils/cache';
+import { getSyncQueue } from '../utils/syncQueue';
 import api from '../api';
 
 export default function HomeScreen() {
@@ -13,6 +14,9 @@ export default function HomeScreen() {
   const [household, setHousehold] = useState(null);
   const [isLoadingHousehold, setIsLoadingHousehold] = useState(true);
   
+  // offline state
+  const [pendingSyncs, setPendingSyncs] = useState(0);
+
   // household form states
   const [householdName, setHouseholdName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
@@ -41,6 +45,15 @@ export default function HomeScreen() {
       setIsLoadingHousehold(false);
     }
   };
+
+  // check the queue length whenever items change
+  useEffect(() => {
+    const checkQueue = async () => {
+      const queue = await getSyncQueue();
+      setPendingSyncs(queue.length);
+    };
+    checkQueue();
+  }, [items]);
 
   useEffect(() => {
     checkUserHousehold();
@@ -129,6 +142,15 @@ export default function HomeScreen() {
         <Text style={styles.headerTitle}>Homi Inventory</Text>
         <Text style={styles.subtitle}>Managing {household.name} (Code: {household.inviteCode})</Text>
 
+        {/* offline banner */}
+        {pendingSyncs > 0 && (
+          <View style={styles.offlineBanner}>
+            <Text style={styles.offlineText}>
+              Offline Mode: {pendingSyncs} action{pendingSyncs > 1 ? 's' : ''} waiting to sync.
+            </Text>
+          </View>
+        )}
+
         {/* add item form */}
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Add Food Item</Text>
@@ -182,7 +204,7 @@ export default function HomeScreen() {
         />
 
         {/* live inventory list */}
-        {isLoading ? (
+        {isLoading && pendingSyncs === 0 ? (
           <ActivityIndicator size="small" color="#007AFF" style={{ marginVertical: 12 }} />
         ) : (
           <FlatList
@@ -256,6 +278,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 26, fontWeight: 'bold', color: '#1C1C1E' },
   title: { fontSize: 28, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 8, textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#666666', marginBottom: 16 },
+  offlineBanner: { backgroundColor: '#FFF4CE', padding: 10, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: '#FFD60A' },
+  offlineText: { color: '#8A6D00', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   formCard: { backgroundColor: '#F2F2F7', padding: 14, borderRadius: 12, marginBottom: 16 },
   sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 8 },
   actionCard: { backgroundColor: '#F2F2F7', padding: 16, borderRadius: 12, marginBottom: 16, width: '100%' },
