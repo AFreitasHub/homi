@@ -23,6 +23,10 @@ const itemSchema = new mongoose.Schema({
     type: Number,
     default: 1,
   },
+  inShoppingList: {
+    type: Boolean,
+    default: false,
+  }
 });
 
 const Item = mongoose.model('Item', itemSchema);
