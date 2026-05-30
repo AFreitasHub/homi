@@ -2,146 +2,161 @@ import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { InventoryContext } from '../../context/InventoryContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function AddItemScreen() {
   const router = useRouter();
   const { addItem } = useContext(InventoryContext);
 
-  // form states
-  const [itemName, setItemName] = useState('');
-  const [itemCategory, setItemCategory] = useState('Fridge'); 
-  const [expiryDays, setExpiryDays] = useState(''); 
-  const [itemQuantity, setItemQuantity] = useState('1');
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('Fridge');
+  const [expiryDays, setExpiryDays] = useState('');
+  const [quantity, setQuantity] = useState('1');
 
-  const handleAddItem = async () => {
-    if (!itemName.trim() || !expiryDays.trim()) {
-      Alert.alert('Validation Error', 'Item name and expiry days are required.');
-      return;
-    }
+  const CATEGORIES = ['Fridge', 'Pantry', 'Freezer'];
 
+  const handleAdd = async () => {
+    const qty = parseInt(quantity, 10);
     const days = parseInt(expiryDays, 10);
-    if (isNaN(days) || days < 0) {
-      Alert.alert('Validation Error', 'Expiry days must be a positive number.');
-      return;
-    }
+
+    if (!name.trim()) return Alert.alert('Error', 'Item name is required.');
+    if (isNaN(qty) || qty < 1) return Alert.alert('Error', 'Quantity must be at least 1.');
+    if (isNaN(days) || days < 0) return Alert.alert('Error', 'Please enter valid days until expiry.');
 
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + days);
 
     try {
       await addItem({
-        name: itemName,
-        category: itemCategory,
+        name: name.trim(),
+        category,
         expiryDate: targetDate.toISOString(),
-        quantity: parseInt(itemQuantity, 10) || 1,
-        inShoppingList: false // Explicitly state this goes to the inventory
+        quantity: qty,
+        inShoppingList: false
       });
       
-      // reset form
-      setItemName('');
+      // Reset form on success
+      setName('');
+      setCategory('Fridge');
       setExpiryDays('');
-      setItemQuantity('1');
-      setItemCategory('Fridge');
-
-      // send the user back to the inventory
-      router.push('/(tabs)/inventory');
+      setQuantity('1');
+      
+      router.navigate('/inventory');
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to add item.');
+      Alert.alert('Error', 'Failed to add item. Check your connection.');
     }
-  };
-
-  const handleCancel = () => {
-    router.push('/(tabs)/inventory');
   };
 
   return (
     <KeyboardAvoidingView 
-      style={{ flex: 1 }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        
         <View style={styles.header}>
-          <Text style={styles.title}>New Item</Text>
-          <Text style={styles.subtitle}>What are we adding to the kitchen?</Text>
+          <Text style={styles.title}>Add Item</Text>
         </View>
 
         <View style={styles.formCard}>
           <Text style={styles.label}>Item Name</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g., Milk, Apples, Bread"
-            value={itemName}
-            onChangeText={setItemName}
-            autoFocus
+            placeholder="e.g., Organic Milk"
+            placeholderTextColor="#C7C7CC"
+            value={name}
+            onChangeText={setName}
           />
+
+          <Text style={styles.label}>Storage Location</Text>
+          <View style={styles.categoryContainer}>
+            {CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.catBtn, category === cat && styles.activeCatBtn]}
+                onPress={() => setCategory(cat)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.catText, category === cat && styles.activeCatText]}>{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
           <View style={styles.rowInputs}>
             <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={styles.label}>Expires in (days)</Text>
+              <Text style={styles.label}>Expires In (days)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., 7"
+                placeholderTextColor="#C7C7CC"
                 value={expiryDays}
                 onChangeText={setExpiryDays}
                 keyboardType="number-pad"
               />
             </View>
+
             <View style={{ flex: 1, marginLeft: 8 }}>
               <Text style={styles.label}>Quantity</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Qty"
-                value={itemQuantity}
-                onChangeText={setItemQuantity}
+                value={quantity}
+                onChangeText={setQuantity}
                 keyboardType="number-pad"
               />
             </View>
           </View>
-          
-          <Text style={styles.label}>Storage Category</Text>
-          <View style={styles.segmentContainer}>
-            {['Fridge', 'Freezer', 'Pantry'].map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.segmentButton, itemCategory === cat && styles.segmentButtonActive]}
-                onPress={() => setItemCategory(cat)}
-              >
-                <Text style={[styles.segmentText, itemCategory === cat && styles.segmentTextActive]}>{cat}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => router.navigate('/inventory')}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddItem}>
-            <Text style={styles.addButtonText}>Save Item</Text>
+          
+          <TouchableOpacity style={styles.saveBtn} onPress={handleAdd} activeOpacity={0.8}>
+            <Ionicons name="checkmark-circle" size={22} color="#ffffff" style={{ marginRight: 6 }} />
+            <Text style={styles.saveBtnText}>Save Item</Text>
           </TouchableOpacity>
         </View>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, backgroundColor: '#ffffff', paddingTop: 60, paddingBottom: 120 },
+  container: { flex: 1, backgroundColor: '#F2F2F7' },
+  scrollContent: { padding: 20, paddingTop: 60, paddingBottom: 100 },
+  
   header: { marginBottom: 24 },
-  title: { fontSize: 32, fontWeight: 'bold', color: '#1C1C1E' },
-  subtitle: { fontSize: 16, color: '#8E8E93', marginTop: 4 },
-  formCard: { marginBottom: 24 },
-  label: { fontSize: 14, fontWeight: '600', color: '#1C1C1E', marginBottom: 8, marginTop: 12 },
-  input: { height: 48, borderColor: '#E5E5EA', borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, backgroundColor: '#F2F2F7', fontSize: 16 },
-  rowInputs: { flexDirection: 'row', justifyContent: 'space-between' },
-  segmentContainer: { flexDirection: 'row', backgroundColor: '#E5E5EA', borderRadius: 10, padding: 4, marginTop: 4 },
-  segmentButton: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-  segmentButtonActive: { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-  segmentText: { fontSize: 14, color: '#8E8E93', fontWeight: '600' },
-  segmentTextActive: { color: '#007AFF', fontWeight: 'bold' },
-  actionButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  cancelButton: { flex: 1, height: 50, backgroundColor: '#F2F2F7', justifyContent: 'center', alignItems: 'center', borderRadius: 12, marginRight: 8 },
-  cancelButtonText: { color: '#FF3B30', fontSize: 16, fontWeight: 'bold' },
-  addButton: { flex: 2, height: 50, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', borderRadius: 12, marginLeft: 8 },
-  addButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  title: { fontSize: 34, fontWeight: 'bold', color: '#1C1C1E' },
+  subtitle: { fontSize: 16, color: '#8E8E93', marginTop: 4, fontWeight: '500' },
+  
+  formCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+    marginBottom: 24
+  },
+  
+  label: { fontSize: 14, fontWeight: '700', color: '#8E8E93', marginBottom: 8, marginTop: 16 },
+  input: { height: 50, borderColor: '#E5E5EA', borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, backgroundColor: '#F2F2F7', fontSize: 16, color: '#1C1C1E' },
+  
+  rowInputs: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  
+  categoryContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  catBtn: { flex: 1, paddingVertical: 12, marginHorizontal: 4, borderRadius: 12, backgroundColor: '#F2F2F7', alignItems: 'center', borderWidth: 1, borderColor: '#E5E5EA' },
+  activeCatBtn: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
+  catText: { color: '#8E8E93', fontWeight: '600', fontSize: 15 },
+  activeCatText: { color: '#ffffff', fontWeight: 'bold' },
+  
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  cancelBtn: { flex: 1, backgroundColor: '#ffffff', paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginRight: 8, borderWidth: 1, borderColor: '#E5E5EA' },
+  cancelBtnText: { color: '#8E8E93', fontSize: 17, fontWeight: 'bold' },
+  saveBtn: { flex: 2, flexDirection: 'row', backgroundColor: '#007AFF', paddingVertical: 16, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginLeft: 8, shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  saveBtnText: { color: '#ffffff', fontSize: 17, fontWeight: 'bold' }
 });
