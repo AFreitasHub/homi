@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api, { setAuthToken } from '../api';
 import { saveCache, getCache } from '../utils/cache';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const AuthContext = createContext();
 
@@ -53,6 +54,12 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     await SecureStore.deleteItemAsync('userToken');
+    await AsyncStorage.multiRemove([
+      '@homi_user', 
+      '@homi_items', 
+      '@homi_offline_queue',
+      '@homi_household'
+    ]);
     setAuthToken(null);
     setUser(null);
   };
