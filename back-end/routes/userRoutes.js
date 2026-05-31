@@ -3,12 +3,13 @@ import { body } from 'express-validator';
 import { registerUser, loginUser, getUserProfile, updateUserProfile, deleteUserProfile } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { registerValidation, profileUpdateValidation } from '../validators/userValidator.js';
+import { strictLimiter } from '../middleware/rateLimitMiddleware.js';
 
 const router = express.Router();
 
-router.post('/', registerValidation, registerUser);
+router.post('/', strictLimiter, registerValidation, registerUser);
 
-router.post('/login', loginUser);
+router.post('/login', strictLimiter, loginUser);
 
 router.route('/profile')
     .get(protect, getUserProfile)

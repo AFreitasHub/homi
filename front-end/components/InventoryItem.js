@@ -28,42 +28,64 @@ export default function InventoryItem({ item, onEdit, onDelete }) {
 
   const badge = getExpiryBadge();
 
-  const handleIncrement = () => {
+  const showErrorAlert = (error) => {
+    const validationErrors = error.response?.data?.errors;
+    const errorMessage = validationErrors 
+      ? validationErrors.map(err => err.message).join('\n')
+      : error.response?.data?.message || 'Action failed. The change was undone.';
+    
+    Alert.alert('Wait a second...', errorMessage);
+  };
+  
+  const handleIncrement = async () => {
     if (item.inShoppingList) {
       setEditQuantity((item.quantity + 1).toString());
       setEditExpiryDays(''); 
       setModalVisible(true);
     } else {
-      onEdit(item._id, { quantity: item.quantity + 1 });
+      try {
+        await onEdit(item._id, { quantity: item.quantity + 1 });
+      } catch (error) {
+        showErrorAlert(error);
+      }
     }
   };
 
-  const handleDecrement = () => {
-    if (item.quantity <= 1) {
-      onEdit(item._id, { quantity: 0, inShoppingList: true });
-    } else {
-      onEdit(item._id, { quantity: item.quantity - 1 });
+const handleDecrement = async () => {
+    try {
+      if (item.quantity <= 1) {
+        await onEdit(item._id, { quantity: 0, inShoppingList: true });
+      } else {
+        await onEdit(item._id, { quantity: item.quantity - 1 });
+      }
+    } catch (error) {
+      showErrorAlert(error);
     }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     const qty = parseInt(editQuantity, 10);
     const days = parseInt(editExpiryDays, 10);
 
     if (!editName.trim()) return Alert.alert('Error', 'Item name cannot be empty.');
     if (isNaN(qty) || qty < 0) return Alert.alert('Error', 'Quantity must be a valid number.');
+    if (qty > 9999) return Alert.alert('Error', 'Quantity cannot exceed 9999.'); // Local check
     if (isNaN(days) || days < 0) return Alert.alert('Error', 'Expiry days must be a valid number.');
 
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + days);
 
-    onEdit(item._id, { 
-      name: editName, 
-      quantity: qty,
-      expiryDate: targetDate.toISOString(),
-      inShoppingList: qty === 0 ? true : item.inShoppingList 
-    });
-    setModalVisible(false);
+    try {
+      await onEdit(item._id, { 
+        name: editName, 
+        quantity: qty,
+        expiryDate: targetDate.toISOString(),
+        inShoppingList: qty === 0 ? true : item.inShoppingList 
+      });
+      setModalVisible(false);
+    } catch (error) {
+      showErrorAlert(error);
+    }
   };
 
   const handleDeletePress = () => {

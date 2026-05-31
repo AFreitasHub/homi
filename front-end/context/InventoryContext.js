@@ -29,13 +29,23 @@ export const InventoryProvider = ({ children }) => {
         // remove from queue only if the API call succeeds
         await dequeueAction(action.localId);
       } catch (error) {
-        console.error('Sync failed, stopping queue processing:', error);
-        break;
+        const status = error.response?.status;
+
+        if (status === 429) {
+          console.warn('Rate limit hit. Pausing sync queue.');
+          break; 
+        } 
+        
+        else if (status >= 400 && status < 500) {
+          console.warn(`Action permanently rejected by server (Status ${status}). Discarding from queue.`, action);
+          await dequeueAction(action.localId);
+          continue;
+        }
+
+        console.error('Sync failed due to network/server error. Pausing queue processing.');
+        break; 
       }
     }
-    
-    // refresh after sync
-    await fetchItems();
   };
 
   // fetch all items for the user's household sorted by expiry date
@@ -62,7 +72,7 @@ export const InventoryProvider = ({ children }) => {
     const tempItem = { ...itemData, _id: Date.now().toString() }; 
     setItems((prevItems) => {
       const updated = [...prevItems, tempItem].sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
-      saveCache('@homi_items', updated); // sync
+      saveCache('@homi_items', updated); 
       return updated;
     });
 
@@ -72,42 +82,75 @@ export const InventoryProvider = ({ children }) => {
       // replace temp item with the real one from db
       setItems((prevItems) => {
         const finalItems = prevItems.map(item => item._id === tempItem._id ? response.data : item);
-        saveCache('@homi_items', finalItems); // sync
+        saveCache('@homi_items', finalItems); 
         return finalItems;
       });
       return response.data;
     } catch (error) {
-      // fallback to offline queue
+      const status = error.response?.status;
+      if (status >= 400 && status < 500 && status !== 429) {
+        setItems((prevItems) => {
+          const rolledBack = prevItems.filter(item => item._id !== tempItem._id);
+          saveCache('@homi_items', rolledBack);
+          return rolledBack;
+        });
+        throw error; 
+      }
+
       console.warn('Added offline. Queuing action.');
       await enqueueAction({ type: 'ADD', payload: itemData });
     }
   };
 
   const editItem = async (id, updatedFields) => {
+    const originalItem = items.find(item => item._id === id);
+
     setItems((prevItems) => {
       const updatedItems = prevItems.map((item) => (item._id === id ? { ...item, ...updatedFields } : item));
-      saveCache('@homi_items', updatedItems); // sync
+      saveCache('@homi_items', updatedItems); 
       return updatedItems;
     });
     
     try {
       await api.put(`/items/${id}`, updatedFields);
     } catch (error) {
+      const status = error.response?.status;
+      if (status >= 400 && status < 500 && status !== 429) {
+        setItems((prevItems) => {
+          const rolledBack = prevItems.map((item) => (item._id === id ? originalItem : item));
+          saveCache('@homi_items', rolledBack);
+          return rolledBack;
+        });
+        throw error;
+      }
+
       console.warn('Edited offline. Queuing action.');
       await enqueueAction({ type: 'EDIT', payload: { id, data: updatedFields } });
     }
   };
 
   const deleteItem = async (id) => {
+    const originalItem = items.find(item => item._id === id);
+
     setItems((prevItems) => {
       const updatedItems = prevItems.filter((item) => item._id !== id);
-      saveCache('@homi_items', updatedItems); // sync
+      saveCache('@homi_items', updatedItems); 
       return updatedItems;
     });
     
     try {
       await api.delete(`/items/${id}`);
     } catch (error) {
+      const status = error.response?.status;
+      if (status >= 400 && status < 500 && status !== 429) {
+        setItems((prevItems) => {
+          const rolledBack = [...prevItems, originalItem].sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+          saveCache('@homi_items', rolledBack);
+          return rolledBack;
+        });
+        throw error;
+      }
+
       console.warn('Deleted offline. Queuing action.');
       await enqueueAction({ type: 'DELETE', payload: { id } });
     }

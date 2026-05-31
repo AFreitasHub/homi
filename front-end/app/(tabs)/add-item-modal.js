@@ -21,6 +21,7 @@ export default function AddItemScreen() {
 
     if (!name.trim()) return Alert.alert('Error', 'Item name is required.');
     if (isNaN(qty) || qty < 1) return Alert.alert('Error', 'Quantity must be at least 1.');
+    if (qty > 9999) return Alert.alert('Error', 'Quantity cannot exceed 9999.'); 
     if (isNaN(days) || days < 0) return Alert.alert('Error', 'Please enter valid days until expiry.');
 
     const targetDate = new Date();
@@ -35,7 +36,6 @@ export default function AddItemScreen() {
         inShoppingList: false
       });
       
-      // Reset form on success
       setName('');
       setCategory('Fridge');
       setExpiryDays('');
@@ -43,7 +43,12 @@ export default function AddItemScreen() {
       
       router.navigate('/inventory');
     } catch (error) {
-      Alert.alert('Error', 'Failed to add item. Check your connection.');
+      const validationErrors = error.response?.data?.errors;
+      const errorMessage = validationErrors 
+        ? validationErrors.map(err => err.message).join('\n')
+        : error.response?.data?.message || 'Failed to add item. Please try again.';
+      
+      Alert.alert('Wait a second...', errorMessage);
     }
   };
 
