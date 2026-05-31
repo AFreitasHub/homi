@@ -14,6 +14,10 @@ export default function InventoryScreen() {
   const [activeCategory, setActiveCategory] = useState('All');
 
   useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  useEffect(() => {
     const checkQueue = async () => {
       const queue = await getSyncQueue();
       setPendingSyncs(queue.length);

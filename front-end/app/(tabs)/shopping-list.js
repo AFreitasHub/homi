@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
 import { InventoryContext } from '../../context/InventoryContext';
 import InventoryItem from '../../components/InventoryItem';
@@ -11,6 +11,10 @@ export default function ShoppingListScreen() {
   const { items, isLoading, fetchItems, addItem, editItem, deleteItem } = useContext(InventoryContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
 
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [isFetchingMap, setIsFetchingMap] = useState(false);
