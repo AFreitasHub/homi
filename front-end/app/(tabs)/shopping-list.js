@@ -65,7 +65,8 @@ export default function ShoppingListScreen() {
       const userLat = loc.coords.latitude;
       const userLon = loc.coords.longitude;
 
-      const query = `[out:json];nwr["shop"="supermarket"](around:5000,${userLat},${userLon});out center;`;
+      // queries OpenStreetMap for supermarkets within a 5km radius
+      const query = `[out:json];nwr["shop"="supequeryrmarket"](around:5000,${userLat},${userLon});out center;`;
       const response = await axios.post(
         'https://overpass-api.de/api/interpreter',
         `data=${encodeURIComponent(query)}`,
@@ -82,6 +83,7 @@ export default function ShoppingListScreen() {
       if (response.data && response.data.elements) {
         const supermarkets = response.data.elements;
         
+        // injects leaflet.js map into a webview for native map display
         const mapHtml = `
           <!DOCTYPE html>
           <html>
@@ -199,7 +201,7 @@ export default function ShoppingListScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             
-            <View style={styles.sheetHandle} />
+            {/* <View style={styles.sheetHandle} /> */}
 
             <View style={styles.modalHeader}>
               <View>
@@ -251,7 +253,7 @@ const styles = StyleSheet.create({
     height: '85%', 
     borderTopLeftRadius: 30, 
     borderTopRightRadius: 30, 
-    overflow: 'hidden' 
+    overflow: 'hidden',
   },
   sheetHandle: {
     width: 40,

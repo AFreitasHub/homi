@@ -144,7 +144,16 @@ const handleDecrement = async () => {
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{item.inShoppingList ? '🛒 Restock Item' : '✏️ Edit Item'}</Text>
+            <View style={styles.modalTitleRow}>
+              <Ionicons 
+                name={item.inShoppingList ? 'cart' : 'pencil'} 
+                size={24} 
+                color="#1C1C1E" 
+              />
+              <Text style={styles.modalTitleText}>
+                {item.inShoppingList ? 'Restock Item' : 'Edit Item'}
+              </Text>
+            </View>
             <Text style={styles.label}>Name</Text>
             <TextInput style={styles.input} value={editName} onChangeText={setEditName} />
             <View style={styles.rowInputs}>
@@ -209,7 +218,17 @@ const styles = StyleSheet.create({
   quantityText: { fontSize: 15, fontWeight: '700', minWidth: 28, textAlign: 'center', marginHorizontal: 4, color: '#1C1C1E' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#ffffff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalTitle: { fontSize: 22, fontWeight: '800', color: '#1C1C1E', marginBottom: 16 },
+  modalTitleRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 16,
+    gap: 8
+  },
+  modalTitleText: { 
+    fontSize: 22, 
+    fontWeight: '800', 
+    color: '#1C1C1E' 
+  },
   rowInputs: { flexDirection: 'row', justifyContent: 'space-between' },
   label: { fontSize: 14, fontWeight: '600', color: '#8E8E93', marginBottom: 6, marginTop: 12 },
   input: { height: 48, borderColor: '#E5E5EA', borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, backgroundColor: '#F2F2F7', fontSize: 16 },
