@@ -40,7 +40,7 @@ export default function SettingsScreen() {
   
   const { user, logout } = useContext(AuthContext); 
   
-  const [notifications, setNotifications] = useState(true);
+  const [notifications, setNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
   const handleLogout = () => {
@@ -68,8 +68,8 @@ export default function SettingsScreen() {
         <SettingRow 
           icon="person" 
           iconBg="#007AFF" 
-          label="Profile Details" 
-          value={user?.firstName || 'User'} 
+          label="Profile" 
+          value={user?.name || 'User'} 
           onPress={() => Alert.alert('Coming Soon')} 
         />
         <SettingRow 
