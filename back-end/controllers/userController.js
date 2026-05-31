@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Household from '../models/Household.js';
+import Item from '../models/Item.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
@@ -104,10 +105,25 @@ export const deleteUserProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        // handle household logic
         if (user.household) {
-            await Household.findByIdAndUpdate(user.household, {
-                $pull: { members: user._id }
-            });
+            const household = await Household.findById(user.household);
+            
+            if (household) {
+                household.members = household.members.filter(
+                    (memberId) => memberId.toString() !== user._id.toString()
+                );
+
+                if (household.members.length === 0) {
+                    await Item.deleteMany({ household: household._id });
+                    await household.deleteOne();
+                } else {
+                    if (household.owner.toString() === user._id.toString()) {
+                        household.owner = household.members[0]; 
+                    }
+                    await household.save();
+                }
+            }
         }
 
         await user.deleteOne();

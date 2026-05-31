@@ -64,8 +64,26 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+const updateProfile = async (userData) => {
+    const response = await api.put('/users/profile', userData);
+    const { token, ...updatedUser } = response.data;
+    
+    if (token) {
+      await SecureStore.setItemAsync('userToken', token);
+      setAuthToken(token);
+    }
+    
+    setUser(updatedUser);
+    await saveCache('@homi_user', updatedUser);
+  };
+
+  const deleteAccount = async () => {
+    await api.delete('/users/profile');
+    await logout();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );
