@@ -1,15 +1,20 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, TextInput, ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TextInput, ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
 import { InventoryContext } from '../../context/InventoryContext';
 import InventoryItem from '../../components/InventoryItem';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import axios from 'axios';
+import { WebView } from 'react-native-webview';
 
 export default function ShoppingListScreen() {
   const { items, isLoading, fetchItems, addItem, editItem, deleteItem } = useContext(InventoryContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
+
+  const [isMapVisible, setIsMapVisible] = useState(false);
+  const [isFetchingMap, setIsFetchingMap] = useState(false);
+  const [htmlContent, setHtmlContent] = useState('');
 
   let shoppingItems = items.filter(item => item.inShoppingList);
 
@@ -22,7 +27,6 @@ export default function ShoppingListScreen() {
   const handleQuickAdd = async () => {
     const cleanName = searchQuery.trim();
     if (!cleanName) return;
-
     setIsSubmitting(true);
     try {
       await addItem({
@@ -40,59 +44,130 @@ export default function ShoppingListScreen() {
     }
   };
 
-  const handleFindSupermarkets = async () => {
-    setIsLocating(true);
+  const openMap = async () => {
+    setIsFetchingMap(true);
+    setIsMapVisible(true);
+
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need your location to find nearby supermarkets.');
-        setIsLocating(false);
+        Alert.alert('Permission Denied', 'Location is required.');
+        setIsMapVisible(false);
+        setIsFetchingMap(false);
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
-      console.log('Successfully fetched coordinates:', location.coords);
-      
-      Alert.alert(
-        'Location Found!', 
-        `Latitude: ${location.coords.latitude}\nLongitude: ${location.coords.longitude}\n\nReady for the Map!`
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const userLat = loc.coords.latitude;
+      const userLon = loc.coords.longitude;
+
+      const query = `[out:json];nwr["shop"="supermarket"](around:5000,${userLat},${userLon});out center;`;
+      const response = await axios.post(
+        'https://overpass-api.de/api/interpreter',
+        `data=${encodeURIComponent(query)}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'HomiApp/1.0'
+          },
+          timeout: 10000
+        }
       );
-      
+
+      if (response.data && response.data.elements) {
+        const supermarkets = response.data.elements;
+        
+        const mapHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            <style>
+              body { padding: 0; margin: 0; background-color: #F2F2F7; }
+              html, body, #map { height: 100%; width: 100%; }
+              
+              /* Homi-style Popups */
+              .leaflet-popup-content-wrapper { 
+                border-radius: 16px; 
+                padding: 4px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+              }
+              .leaflet-popup-content { 
+                font-family: -apple-system, system-ui, sans-serif; 
+                margin: 12px; 
+              }
+              .store-title { font-weight: 700; font-size: 16px; color: #1C1C1E; margin-bottom: 2px; }
+              .store-brand { color: #007AFF; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+              
+              /* Hide Leaflet Attribution for cleaner look */
+              .leaflet-control-attribution { display: none; }
+            </style>
+          </head>
+          <body>
+            <div id="map"></div>
+            <script>
+              var map = L.map('map', { zoomControl: false }).setView([${userLat}, ${userLon}], 14);
+              
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+              var userIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+              });
+              
+              L.marker([${userLat}, ${userLon}], {icon: userIcon}).addTo(map)
+                .bindPopup('<div class="store-title">You</div>').openPopup();
+
+              const stores = ${JSON.stringify(supermarkets)};
+              stores.forEach(store => {
+                const lat = store.lat || (store.center && store.center.lat);
+                const lon = store.lon || (store.center && store.center.lon);
+
+                if(lat && lon) {
+                  const name = store.tags.name || 'Supermarket';
+                  const brand = store.tags.brand || 'Grocery';
+                  const popupHtml = '<div class="store-brand">' + brand + '</div><div class="store-title">' + name + '</div>';
+                  L.marker([lat, lon]).addTo(map).bindPopup(popupHtml);
+                }
+              });
+            </script>
+          </body>
+          </html>
+        `;
+        setHtmlContent(mapHtml);
+      }
     } catch (error) {
-      Alert.alert('Error', 'Could not fetch your location. Please ensure GPS is enabled.');
+      Alert.alert('Error', 'Failed to load map data.');
+      setIsMapVisible(false);
     } finally {
-      setIsLocating(false);
+      setIsFetchingMap(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Shopping List</Text>
+      {/* HEADER */}
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.title}>Shopping List</Text>
+          <Text style={styles.subtitle}>{shoppingItems.length} items needed</Text>
+        </View>
+        <TouchableOpacity style={styles.mapButton} onPress={openMap} activeOpacity={0.8}>
+          <Ionicons name="map" size={22} color="#ffffff" />
+        </TouchableOpacity>
       </View>
 
-      <TouchableOpacity 
-        style={styles.mapButton} 
-        onPress={handleFindSupermarkets}
-        disabled={isLocating}
-        activeOpacity={0.8}
-      >
-        {isLocating ? (
-          <ActivityIndicator color="#ffffff" size="small" />
-        ) : (
-          <>
-            <Ionicons name="location" size={20} color="#ffffff" style={styles.mapIcon} />
-            <Text style={styles.mapButtonText}>Find Supermarkets Near Me</Text>
-          </>
-        )}
-      </TouchableOpacity>
-
+      {/* SEARCH */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search or add items..."
+          placeholderTextColor="#8E8E93"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -102,79 +177,99 @@ export default function ShoppingListScreen() {
         data={shoppingItems}
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
-          <InventoryItem
-            item={item}
-            onEdit={editItem}
-            onDelete={deleteItem}
-          />
+          <InventoryItem item={item} onEdit={editItem} onDelete={deleteItem} />
         )}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading && shoppingItems.length > 0}
-            onRefresh={() => fetchItems()}
-            tintColor="#007AFF"
-          />
-        }
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchItems} tintColor="#007AFF" />}
         ListEmptyComponent={
-          isLoading ? (
-            <ActivityIndicator size="small" color="#007AFF" style={{ marginVertical: 20 }} />
-          ) : searchQuery.trim() !== '' ? (
-            <TouchableOpacity 
-              style={styles.quickAddCard} 
-              onPress={handleQuickAdd}
-              disabled={isSubmitting}
-              activeOpacity={0.7}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#007AFF" />
-              ) : (
-                <>
-                  <View style={styles.quickAddIconContainer}>
-                    <Ionicons name="add" size={24} color="#ffffff" />
-                  </View>
-                  <Text style={styles.quickAddText}>
-                    Add "<Text style={{ fontWeight: 'bold' }}>{searchQuery}</Text>" to list
-                  </Text>
-                </>
-              )}
+          !isLoading && searchQuery.trim() !== '' ? (
+            <TouchableOpacity style={styles.quickAddCard} onPress={handleQuickAdd}>
+              <View style={styles.quickAddIconContainer}><Ionicons name="add" size={24} color="#ffffff" /></View>
+              <Text style={styles.quickAddText}>Add "<Text style={{ fontWeight: 'bold' }}>{searchQuery}</Text>"</Text>
             </TouchableOpacity>
-          ) : (
-            <Text style={styles.emptyText}>Nothing to buy! You're fully stocked.</Text>
-          )
+          ) : !isLoading && <Text style={styles.emptyText}>You're fully stocked!</Text>
         }
         contentContainerStyle={{ paddingBottom: 100 }} 
       />
+
+      <Modal visible={isMapVisible} animationType="slide" transparent={true} onRequestClose={() => setIsMapVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Nearby Stores</Text>
+                <Text style={styles.modalSubtitle}>OpenStreetMap Data</Text>
+              </View>
+              <TouchableOpacity style={styles.closeCircle} onPress={() => setIsMapVisible(false)}>
+                <Ionicons name="close" size={24} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.mapContainer}>
+              {isFetchingMap ? (
+                <View style={styles.center}>
+                  <ActivityIndicator size="large" color="#007AFF" />
+                  <Text style={styles.loadingText}>Fetching stores...</Text>
+                </View>
+              ) : (
+                <WebView 
+                  originWhitelist={['*']}
+                  source={{ html: htmlContent }}
+                  style={styles.webview}
+                />
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#F2F2F7', paddingTop: 60 },
-  header: { marginBottom: 16 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   title: { fontSize: 34, fontWeight: 'bold', color: '#1C1C1E' },
-  
-  mapButton: {
-    flexDirection: 'row',
-    backgroundColor: '#34C759',
-    paddingVertical: 14,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#34C759',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  mapIcon: { marginRight: 8 },
-  mapButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
-
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 12, paddingHorizontal: 12, height: 48, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+  subtitle: { fontSize: 15, color: '#8E8E93', fontWeight: '500' },
+  mapButton: { width: 48, height: 48, backgroundColor: '#007AFF', borderRadius: 24, justifyContent: 'center', alignItems: 'center', shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 14, paddingHorizontal: 12, height: 50, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 16, color: '#1C1C1E', height: '100%' },
-  emptyText: { textAlign: 'center', color: '#8E8E93', marginVertical: 30, fontStyle: 'italic', fontSize: 15 },
-  quickAddCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', padding: 16, borderRadius: 16, marginVertical: 12, shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, borderWidth: 1, borderColor: '#E5F1FF' },
+  searchInput: { flex: 1, fontSize: 17, color: '#1C1C1E' },
+  emptyText: { textAlign: 'center', color: '#8E8E93', marginTop: 40, fontStyle: 'italic' },
+  quickAddCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', padding: 16, borderRadius: 16, marginTop: 10, borderWidth: 1, borderColor: '#E5F1FF' },
   quickAddIconContainer: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  quickAddText: { color: '#1C1C1E', fontSize: 16, flex: 1 }
+  quickAddText: { color: '#1C1C1E', fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { 
+    backgroundColor: '#F2F2F7', 
+    height: '85%', 
+    borderTopLeftRadius: 30, 
+    borderTopRightRadius: 30, 
+    overflow: 'hidden' 
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#C7C7CC',
+    borderRadius: 2.5,
+    alignSelf: 'center',
+    marginTop: 10
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 24, 
+    paddingVertical: 20,
+    backgroundColor: '#F2F2F7'
+  },
+  modalTitle: { fontSize: 24, fontWeight: 'bold', color: '#1C1C1E' },
+  modalSubtitle: { fontSize: 13, color: '#8E8E93', fontWeight: '600', textTransform: 'uppercase' },
+  closeCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E5E5EA', justifyContent: 'center', alignItems: 'center' },
+  mapContainer: { flex: 1, backgroundColor: '#ffffff', marginHorizontal: 15, marginBottom: 30, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#E5E5EA' },
+  webview: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 10, color: '#8E8E93', fontWeight: '600' }
 });

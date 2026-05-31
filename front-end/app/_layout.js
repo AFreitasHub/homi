@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { AuthProvider, AuthContext } from '../context/AuthContext';
 import { InventoryProvider } from '../context/InventoryContext';
+import { GestureHandlerRootView } from 'react-native-gesture-handler'; 
 
 function RootLayoutNav() {
   const { user, isLoading } = useContext(AuthContext);
@@ -38,11 +39,13 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <InventoryProvider>
-        <RootLayoutNav />
-      </InventoryProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}> 
+      <AuthProvider>
+        <InventoryProvider>
+          <RootLayoutNav />
+        </InventoryProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 
